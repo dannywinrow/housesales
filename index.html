@@ -17,22 +17,48 @@
 
       <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
       <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      
+      <!-- Load font -->
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@500&family=Shantell+Sans:wght@300&display=swap" rel="stylesheet">
     <!-- Load CSV reader D3  -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 
-    <link rel="stylesheet" type="text/css" href="./style.css" />
+    <link rel="stylesheet" type="text/css" href="./index.css" />
     <script type="module" src="./index.js"></script>
     
   </head>
   <body>
-    <h3>Land Transactions Map showing 2023 transactions</h3>
-    <!--The div element for the map -->
-    <div id="map"></div>
-
-    <!-- prettier-ignore -->
-
-    
+    <div class="container">
+      <div class="header">
+         <h3 class="title">Land Transactions Map showing 2023 transactions</h3>
+      </div>
+      <div class="range_container">
+        <div class="sliders_control">
+            <input id="fromSlider" type="range" value="0" min="0" max="6000000" step="50000"/>
+            <input id="toSlider" type="range" value="6000000" min="0" max="6000000" step="50000"/>
+        </div>
+        <div class="form_control">
+          <div class="form_control_container">
+              <div class="form_control_container_min">Min</div>
+              <input class="form_control_container_min_input" type="number" id="fromInput" value="0" min="0" max="6000000"/>
+          </div>
+          <div class="form_control_label">
+            <span>Price Filter</span>
+          </div>
+          <div class="form_control_container">
+              <div class="form_control_container_max">Max</div>
+              <input class="form_control_container_max_input" type="number" id="toInput" value="6000000" min="0" max="6000000"/>
+          </div>
+      </div>
+      </div>
+      <div class="map-container">
+        <div class="map-frame">  
+          <div id="map-id"></div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
 
