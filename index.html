@@ -34,24 +34,45 @@
       <div class="header">
          <h3 class="title">Land Transactions Map showing 2023 transactions</h3>
       </div>
-      <div class="range_container">
-        <div class="sliders_control">
-            <input id="fromSlider" type="range" value="0" min="0" max="6000000" step="50000"/>
-            <input id="toSlider" type="range" value="6000000" min="0" max="6000000" step="50000"/>
+      <div class="ranges_container">
+        <div class="range_container">
+          <div class="sliders_control">
+              <input id="priceSliderFrom" type="range" value="0" min="0" max="6000000" step="50000"/>
+              <input id="priceSliderTo" type="range" value="6000000" min="0" max="6000000" step="50000"/>
+          </div>
+          <div class="form_control">
+            <div class="form_control_container">
+                <div class="form_control_container_min">Min</div>
+                <input class="form_control_container_min_input" type="text" data-type="currency" id="priceInputFrom" value="£0"/>
+            </div>
+            <div class="form_control_label">
+              <span>Price Filter</span>
+            </div>
+            <div class="form_control_container">
+                <div class="form_control_container_max">Max</div>
+                <input class="form_control_container_max_input" type="text" data-type="currency" id="priceInputTo" value="£6,000,000"/>
+            </div>
+          </div>
         </div>
-        <div class="form_control">
-          <div class="form_control_container">
-              <div class="form_control_container_min">Min</div>
-              <input class="form_control_container_min_input" type="number" id="fromInput" value="0" min="0" max="6000000"/>
+        <div class="range_container">
+          <div class="sliders_control">
+              <input id="dateSliderFrom" type="range"/>
+              <input id="dateSliderTo" type="range"/>
           </div>
-          <div class="form_control_label">
-            <span>Price Filter</span>
+          <div class="form_control">
+            <div class="form_control_container">
+                <div class="form_control_container_min">Min</div>
+                <label class="form_control_container_min_label" data-type="date" id="dateLabelFrom"></label>
+            </div>
+            <div class="form_control_label">
+              <span>Date Filter</span>
+            </div>
+            <div class="form_control_container">
+                <div class="form_control_container_max">Max</div>
+                <label class="form_control_container_max_label" data-type="date" id="dateLabelTo"></label>
+            </div>
           </div>
-          <div class="form_control_container">
-              <div class="form_control_container_max">Max</div>
-              <input class="form_control_container_max_input" type="number" id="toInput" value="6000000" min="0" max="6000000"/>
-          </div>
-      </div>
+        </div>
       </div>
       <div class="map-container">
         <div class="map-frame">  
@@ -62,3 +83,4 @@
   </body>
 </html>
 
+<input type="text" name="currency-field" id="currency-field"  value="" data-type="currency" placeholder="$1,000,000.00">
