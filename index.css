@@ -85,7 +85,7 @@ html {
   }
   
   input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
+    appearance: none;
     pointer-events: all;
     width: 24px;
     height: 24px;
@@ -96,7 +96,7 @@ html {
   }
   
   input[type=range]::-moz-range-thumb {
-    -webkit-appearance: none;
+    appearance: none;
     pointer-events: all;
     width: 24px;
     height: 24px;
