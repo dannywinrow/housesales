@@ -62,8 +62,12 @@ const landreg = await d3.csv("data/iom-land-registry-with-location.csv",
   }
 );
 
-myApp.dateMax = monthOnly(getMax(landreg,"Completion_Date"));
-myApp.dateMin = monthOnly(getMin(landreg,"Completion_Date"));
+if (new Date() < getMax(landreg,"Acquisition_Date")){
+  myApp.dateMax = monthOnly(new Date())
+} else {
+  myApp.dateMax = getMax(landreg,"Acquisition_Date")
+}
+myApp.dateMin = monthOnly(getMin(landreg,"Acquisition_Date"));
 myApp.dateFromNum = 0;
 myApp.dateToNum = (myApp.dateMax.getFullYear()-myApp.dateMin.getFullYear())*12 + myApp.dateMax.getMonth() - myApp.dateMin.getMonth();
 
@@ -122,7 +126,7 @@ function makeSale(sale) {
     priceString += " (paid "+ GBPFormatter.format(sale.Consideration)+")";
   }
   sale.marker.Market_Value = sale.Market_Value;
-  sale.marker.Completion_Date = sale.Completion_Date;
+  sale.marker.Acquisition_Date = sale.Acquisition_Date;
   sale.marker.bindPopup(
     sale.longaddress + "<br>" + (new Date(sale.Acquisition_Date)).toLocaleDateString("en-GB")+": "+priceString
   );
@@ -214,8 +218,8 @@ function refreshSales() {
     markerList.filter((sale) =>
       sale.Market_Value >= myApp.priceFrom &&
       sale.Market_Value <= myApp.priceTo &&
-      sale.Completion_Date >= getDateFrom() &&
-      sale.Completion_Date < addMonths(getDateTo(),1))
+      sale.Acquisition_Date >= getDateFrom() &&
+      sale.Acquisition_Date < addMonths(getDateTo(),1))
   );
 }
 
