@@ -6,8 +6,10 @@ myApp.priceFrom = myApp.priceMin;
 myApp.priceTo = myApp.priceMax;
 
 //Isle of Man
-const position = {lat: 54.23400, lng: -4.50412};
+const isleofman = {lat: 54.212063, lng: -4.531187};
+const snaefell = {lat: 54.263857, lng: -4.471264};
 const zoom = 10;
+const markerZoom = 18;
 
 function initmap(position, zoom){
   var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -28,7 +30,7 @@ function initmap(position, zoom){
 var loaded = function(){
   console.clear()
   // Handler when the DOM is fully loaded
-  myApp.map = initmap(position, zoom);
+  myApp.map = initmap(snaefell, zoom);
 };
 
 if (document.readyState === "complete" ||
@@ -50,43 +52,50 @@ const GBPFormatter = new Intl.NumberFormat('en-GB', {
 const landreg = await d3.csv("data/iom-land-registry-with-location.csv",
   function(d) {
     return {
-      longaddress: d.longaddress,
-      shortaddress: d.shortaddress,
-      Acquisition_Date: new Date(d.Acquisition_Date),
-      Completion_Date: new Date(d.Completion_Date),
-      Consideration: Number(d.Consideration),
-      Market_Value: Number(d.Market_Value),
-      lat: Number(d.lat),
-      lon: Number(d.lon)
+      longAddress: d.longaddress,
+      shortAddress: d.shortaddress,
+      shortPlusCode: d.shortpluscode,
+      acquisitionDate: new Date(d.Acquisition_Date),
+      completionDate: new Date(d.Completion_Date),
+      consideration: Number(d.Consideration),
+      marketValue: Number(d.Market_Value),
     }
   }
 );
 
-if (new Date() < getMax(landreg,"Acquisition_Date")){
+function getLatLng(shortcode) {
+  var coord = OpenLocationCode.decode(OpenLocationCode.recoverNearest(shortcode,snaefell.lat,snaefell.lng))
+  return [coord.latitudeCenter, coord.longitudeCenter]
+}
+
+function maxOfDates(a,b) {
+  if (a > b) {
+    return a;
+  }
+  return b;
+}
+if (new Date() < getMax(landreg,"acquisitionDate")){
   myApp.dateMax = monthOnly(new Date())
 } else {
-  myApp.dateMax = getMax(landreg,"Acquisition_Date")
+  myApp.dateMax = getMax(landreg,"acquisitionDate")
 }
-myApp.dateMin = monthOnly(getMin(landreg,"Acquisition_Date"));
+myApp.dateMin = monthOnly(getMin(landreg,"acquisitionDate"));
+myApp.absDateMin = new Date(1999,12,1)
+myApp.dateSliderMin = maxOfDates(myApp.absDateMin,myApp.dateMin);
 myApp.dateFromNum = 0;
-myApp.dateToNum = (myApp.dateMax.getFullYear()-myApp.dateMin.getFullYear())*12 + myApp.dateMax.getMonth() - myApp.dateMin.getMonth();
+myApp.dateToNum = (myApp.dateMax.getFullYear()-myApp.dateSliderMin.getFullYear())*12 + myApp.dateMax.getMonth() - myApp.dateSliderMin.getMonth();
 
 
 var markers = L.markerClusterGroup({ chunkedLoading: true,
-                                      disableClusteringAtZoom: 16,
+                                      disableClusteringAtZoom: markerZoom,
                                       spiderfyOnMaxZoom: false,
                                     zoomToBoundsOnClick: true });
 var markerList = [];
 
-
+console.log(Object.groupBy(landreg,(x)=>x.shortPlusCode))
 landreg.forEach(makeSale);
 markers.addLayers(markerList);
 myApp.map.addLayer(markers);
-
-
-
-
-
 
 function getMax(arr, prop) {
   var max;
@@ -120,15 +129,15 @@ function addMonths(date, months) {
 }
 
 function makeSale(sale) {
-  sale["marker"] = L.marker([sale.lat, sale.lon]);
-  var priceString = GBPFormatter.format(sale.Market_Value);
-  if (sale.Consideration != sale.Market_Value){
-    priceString += " (paid "+ GBPFormatter.format(sale.Consideration)+")";
+  sale["marker"] = L.marker(getLatLng(sale.shortPlusCode));
+  var priceString = GBPFormatter.format(sale.marketValue);
+  if (sale.consideration != sale.marketValue){
+    priceString += " (paid "+ GBPFormatter.format(sale.consideration)+")";
   }
-  sale.marker.Market_Value = sale.Market_Value;
-  sale.marker.Acquisition_Date = sale.Acquisition_Date;
+  sale.marker.marketValue = sale.marketValue;
+  sale.marker.acquisitionDate = sale.acquisitionDate;
   sale.marker.bindPopup(
-    sale.longaddress + "<br>" + (new Date(sale.Acquisition_Date)).toLocaleDateString("en-GB")+": "+priceString
+    sale.longAddress + "<br>" + (new Date(sale.acquisitionDate)).toLocaleDateString("en-GB")+": "+priceString
   );
   markerList.push(sale.marker);
 }
@@ -145,18 +154,33 @@ function updateDateTo(newDateToNum) {
   updateDates();
 }
 
-function updateDateSlider(slider,dateNum) {
-  slider.value = dateNum;
+function updateDateSlider(slider,num) {
+  slider.value = num;
 }
-function updateDateLabel(label,date) {
-  label.innerHTML = formatStringDate(date);
+
+function updateDateLabel(label, num) {
+  if (num == -1) {
+    label.innerHTML = "Min";
+  } else if (num == -2) {
+    label.innerHTML = "Max";
+  } else {
+    label.innerHTML = formatStringDate(getDateWithNum(num));
+  }
 }
 
 function updateDates() {
   updateDateSlider(dateSliderFrom,myApp.dateFromNum);
-  updateDateLabel(dateLabelFrom,getDateFrom());
+  if (myApp.dateFromNum == 0) {
+    updateDateLabel(dateLabelFrom,-1);
+  } else {
+    updateDateLabel(dateLabelFrom,myApp.dateFromNum);
+  }
   updateDateSlider(dateSliderTo,myApp.dateToNum);
-  updateDateLabel(dateLabelTo,getDateTo());
+  if (myApp.dateToNum == dateSliderTo.max) {
+    updateDateLabel(dateLabelTo,-2);
+  } else {
+    updateDateLabel(dateLabelTo,myApp.dateToNum);
+  }
   fillSlider(dateSliderFrom, dateSliderTo, '#C6C6C6', '#25daa5');
   //Set toSlider on top if price is zero
   if (myApp.dateToNum <= 0 ) {
@@ -214,12 +238,18 @@ function fillSlider(from, to, sliderColor, rangeColor) {
 
 function refreshSales() {
   markers.removeLayers(markerList);
+  if (myApp.dateFromNum == 0) {
+    var dateFrom = myApp.dateMin;
+    console.log(myApp.dateMin)
+  } else {
+    var dateFrom = getDateFrom();
+  }
   markers.addLayers(
     markerList.filter((sale) =>
-      sale.Market_Value >= myApp.priceFrom &&
-      sale.Market_Value <= myApp.priceTo &&
-      sale.Acquisition_Date >= getDateFrom() &&
-      sale.Acquisition_Date < addMonths(getDateTo(),1))
+      sale.marketValue >= myApp.priceFrom &&
+      sale.marketValue <= myApp.priceTo &&
+      sale.acquisitionDate >= dateFrom &&
+      sale.acquisitionDate < addMonths(getDateTo(),1))
   );
 }
 
@@ -292,11 +322,14 @@ function formatStringDate(date) {
   return date.toLocaleDateString('en-gb', {  year:"numeric", month:"long"})
 }
 
+function getDateWithNum(num) {
+  return addMonths(new Date(myApp.dateSliderMin),num);
+}
 function getDateFrom() {
-  return addMonths(new Date(myApp.dateMin),myApp.dateFromNum)
+  return getDateWithNum(myApp.dateFromNum);
 }
 function getDateTo() {
-  return addMonths(new Date(myApp.dateMin),myApp.dateToNum)
+  return getDateWithNum(myApp.dateToNum);
 }
 function formatStringCurrency(input_val, blur) {
   // appends $ to value, validates decimal side

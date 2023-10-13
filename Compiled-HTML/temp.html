@@ -1,0 +1,26 @@
+<div class="wrap" role="group" aria-label="multi thumb slider with ruler"
+    style="--a: 2; --b: 5; --min: 0; --max: 9; --lbl-a: 16; --lbl-b: 48">
+
+    <label class="sr-only" for="a">Value A:</label>
+    <input id="a" type="range" min="0" max="9" value="2" aria-valuetext="16" list="l" />
+    <output for="a" aria-hidden="true"></output>
+    <output for="a" aria-hidden="true"></output>
+    <output for="a" aria-hidden="true"></output>
+    <label class="sr-only" for="b">Value B:</label>
+    <input id="b" type="range" min="0" max="9" value="5" aria-valuetext="48" list="l" />
+    <output for="b" aria-hidden="true"></output>
+    <output for="b" aria-hidden="true"></output>
+    <output for="b" aria-hidden="true"></output>
+    <datalist id="l">
+        <option value="0" label="0"></option>
+        <option value="1" label="12"></option>
+        <option value="2" label="16"></option>
+        <option value="3" label="24"></option>
+        <option value="4" label="32"></option>
+        <option value="5" label="48"></option>
+        <option value="6" label="64"></option>
+        <option value="7" label="128"></option>
+        <option value="8" label="256"></option>
+        <option value="9" label="512"></option>
+    </datalist>
+</div>
