@@ -2,7 +2,7 @@
 
 <html>
   <head>
-    <title>Land Transactions Map showing 2023 transactions</title>
+    <title>IOM Land Transactions</title>
 
     <!-- Load Leaflet Maps API  -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -36,9 +36,14 @@
     
   </head>
   <body>
+
     <div class="container">
-      <div class="header">
-         <h3 class="title">Land Transactions Map showing 2023 transactions</h3>
+      <div class="tableHeading">
+        <img src="resources/Coat_of_arms_of_the_Isle_of_Man.svg">
+        <div class="tableTitle">IOM Land Register</div>
+        <button id="mapButton">Map</button>
+        <button id="tableButton">Table</button>
+        <input class="tableSearch" type="text" placeholder="Search the register">
       </div>
       <div class="ranges_container">
         <div class="range_container">
@@ -85,8 +90,10 @@
           <div id="map-id"></div>
         </div>
       </div>
+      <div class="table-container hidden">
+        <table id="landregTable">
+        </table>
+      </div>
     </div>
   </body>
 </html>
-
-<input type="text" name="currency-field" id="currency-field"  value="" data-type="currency" placeholder="$1,000,000.00">

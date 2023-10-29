@@ -11,6 +11,9 @@ const snaefell = {lat: 54.263857, lng: -4.471264};
 const zoom = 10;
 const markerZoom = 18;
 
+
+var lgfilt;
+
 function initmap(position, zoom){
   var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -52,8 +55,8 @@ const GBPFormatter = new Intl.NumberFormat('en-GB', {
 const landreg = await d3.csv("data/iom-land-registry-with-location.csv",
   function(d) {
     return {
-      longAddress: d.longaddress,
-      shortAddress: d.shortaddress,
+      sharedAddress: d.sharedaddress,
+      uniqueAddress: d.uniqueaddress,
       shortPlusCode: d.shortpluscode,
       acquisitionDate: new Date(d.Acquisition_Date),
       completionDate: new Date(d.Completion_Date),
@@ -74,6 +77,7 @@ function maxOfDates(a,b) {
   }
   return b;
 }
+
 if (new Date() < getMax(landreg,"acquisitionDate")){
   myApp.dateMax = monthOnly(new Date())
 } else {
@@ -92,9 +96,6 @@ var markers = L.markerClusterGroup({ chunkedLoading: true,
                                     zoomToBoundsOnClick: true });
 var markerList = [];
 
-console.log(Object.groupBy(landreg,(x)=>x.shortPlusCode))
-landreg.forEach(makeSale);
-markers.addLayers(markerList);
 myApp.map.addLayer(markers);
 
 function getMax(arr, prop) {
@@ -137,9 +138,28 @@ function makeSale(sale) {
   sale.marker.marketValue = sale.marketValue;
   sale.marker.acquisitionDate = sale.acquisitionDate;
   sale.marker.bindPopup(
-    sale.longAddress + "<br>" + (new Date(sale.acquisitionDate)).toLocaleDateString("en-GB")+": "+priceString
+    sale.Address + "<br>" + (new Date(sale.acquisitionDate)).toLocaleDateString("en-GB")+": "+priceString
   );
   markerList.push(sale.marker);
+}
+
+function makeGroupedSale(shortPlusCode,sales) {
+  var marker = L.marker(getLatLng(shortPlusCode));
+  
+  function saleString(sale) {
+    var priceString = GBPFormatter.format(sale.marketValue);
+    if (sale.consideration != sale.marketValue){
+      priceString += " (paid "+ GBPFormatter.format(sale.consideration)+")";
+    }
+    s += `<tr><td>${sale.uniqueAddress}</td><td>${new Date(sale.acquisitionDate).toLocaleDateString("en-GB")}</td><td>${priceString}</td></tr>`
+  }
+  var s = `<table>`
+  s += `<tr>${sales[0].sharedAddress}</tr>`
+  sales.forEach(saleString)
+  s += "</table>"
+  var popup = L.popup({maxHeight:300}).setContent(s);
+  marker.bindPopup(popup);
+  markerList.push(marker);
 }
 
 // FOR THE SLIDERS
@@ -188,7 +208,7 @@ function updateDates() {
   } else {
     dateSliderTo.style.zIndex = 0;
   }
-  refreshSales();
+  refreshData();
 }
 
 function updatePriceFrom(newPriceFrom) {
@@ -219,7 +239,13 @@ function updatePrices() {
   } else {
     priceSliderTo.style.zIndex = 0;
   }
+  refreshData();
+}
+
+function refreshData() {
+  filterData();
   refreshSales();
+  printTable();
 }
 
 function fillSlider(from, to, sliderColor, rangeColor) {
@@ -237,20 +263,14 @@ function fillSlider(from, to, sliderColor, rangeColor) {
 }
 
 function refreshSales() {
-  markers.removeLayers(markerList);
-  if (myApp.dateFromNum == 0) {
-    var dateFrom = myApp.dateMin;
-    console.log(myApp.dateMin)
-  } else {
-    var dateFrom = getDateFrom();
+  markers.clearLayers();
+  console.log(lgfilt);
+  var groupedreg = Object.groupBy(lgfilt,(x)=>x.shortPlusCode)
+  markerList = [];
+  for (const [shortPlusCode, sales] of Object.entries(groupedreg)) {
+    makeGroupedSale(shortPlusCode,sales);
   }
-  markers.addLayers(
-    markerList.filter((sale) =>
-      sale.marketValue >= myApp.priceFrom &&
-      sale.marketValue <= myApp.priceTo &&
-      sale.acquisitionDate >= dateFrom &&
-      sale.acquisitionDate < addMonths(getDateTo(),1))
-  );
+  markers.addLayers(markerList);
 }
 
 const dateSliderFrom = document.querySelector("#dateSliderFrom");
@@ -267,9 +287,6 @@ const priceSliderFrom = document.querySelector('#priceSliderFrom');
 const priceSliderTo = document.querySelector('#priceSliderTo');
 const priceInputFrom = document.querySelector('#priceInputFrom');
 const priceInputTo = document.querySelector('#priceInputTo');
-
-updatePrices();
-updateDates();
 
 dateSliderFrom.oninput = () => updateDateFrom(dateSliderFrom.value);
 dateSliderTo.oninput = () => updateDateTo(dateSliderTo.value);
@@ -326,7 +343,11 @@ function getDateWithNum(num) {
   return addMonths(new Date(myApp.dateSliderMin),num);
 }
 function getDateFrom() {
-  return getDateWithNum(myApp.dateFromNum);
+  if (myApp.dateFromNum == 0) {
+    return myApp.dateMin;
+  } else {
+    return getDateWithNum(myApp.dateFromNum);
+  }
 }
 function getDateTo() {
   return getDateWithNum(myApp.dateToNum);
@@ -381,3 +402,111 @@ function formatStringCurrency(input_val, blur) {
   return input_val;
 
 }
+
+
+
+const objectSorter = (p,sortAsc) => (a, b) => ((a, b) => a>b ? sortAsc ? 1 : -1 : a<b ? sortAsc ? -1 : 1 : 0)(a[p], b[p]);
+
+const numToDisplay = 50;
+var currentSort = "Address";
+var sortAsc = true;
+var tableData = [];
+
+function headerRow(columns) {
+	var s = "<thead><tr>";
+	columns.forEach((header)=>{
+		s += `<th>${header.replace("_"," ")}</th>`;
+	})
+	s += "</tr></thead>";
+	return s;
+}
+function tableRow(row,columns) {
+	var s = "<tr>";
+	columns.forEach((column)=>{
+    var data = row[column];
+    if (data.constructor === Number) {
+      data = GBPFormatter.format(data);
+    } else if (data.constructor === Date) {
+      data = data.toLocaleDateString("en-GB");
+    } 
+		s += `<td class="${column}">${data}</td>`;
+	})
+	s += "</tr>";
+	return s;
+}
+//document.write(jsonToTable(landreg))
+
+const table = document.querySelector('#landregTable');
+const search = document.querySelector('.tableSearch');
+console.log(search)
+const columns = Object.keys(landreg[1]);
+const tablehead = headerRow(columns);
+
+function printRow(row) {
+  table.querySelector('tbody').insertAdjacentHTML('beforeend', tableRow(row,columns));
+}
+
+function initialiseTable() {
+  table.innerHTML = tablehead + "<tbody></tbody>";
+  Array.from(document.querySelectorAll('th')).forEach((h)=> {
+    h.addEventListener('click', function(e) {
+      console.log(e.target);
+      console.log(e.target.textContent.replace(" ","_"));
+      sortTableBy(e.target.textContent.replace(" ","_"));
+    })
+  })
+}
+
+// Display first page of data
+filterData();
+sortTables();
+initialiseTable();
+
+updatePrices();
+updateDates();
+
+search.addEventListener('input', refreshData)
+
+function filterData() {
+  lgfilt = landreg.filter((sale) =>
+    sale.marketValue >= myApp.priceFrom &&
+    sale.marketValue <= myApp.priceTo &&
+    sale.acquisitionDate >= getDateFrom() &&
+    sale.acquisitionDate < addMonths(getDateTo(),1) &&
+    (sale.sharedAddress + ", " + sale.uniqueAddress).toLowerCase().indexOf(search.value.toLowerCase()) >= 0
+  )
+}
+
+function printTable() {
+  table.querySelector('tbody').innerHTML = ''
+  lgfilt.slice(0,numToDisplay-1).forEach((row)=>printRow(row))
+}
+
+function sortTableBy(header) {
+  console.log("try to sort")
+  if (currentSort == header) {
+    sortAsc = !sortAsc;
+  }
+  else {
+    sortAsc = true;
+    currentSort = header;
+  }
+  sortTables();
+  printTable();
+}
+
+function sortTables() {
+    console.log(`sorting table by ${currentSort}`)
+    lgfilt.sort(objectSorter(currentSort,sortAsc))
+    landreg.sort(objectSorter(currentSort,sortAsc))
+}
+function mapClick(e) {
+  document.querySelector(".table-container").classList.add("hidden")
+  document.querySelector(".map-container").classList.remove("hidden")
+}
+function tableClick(e) {
+  document.querySelector(".table-container").classList.remove("hidden")
+  document.querySelector(".map-container").classList.add("hidden")
+}
+document.querySelector("#tableButton").addEventListener('click',tableClick)
+document.querySelector("#mapButton").addEventListener('click',mapClick)
