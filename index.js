@@ -31,7 +31,6 @@ function initmap(position, zoom){
 // ==================== ON LOAD ======================
 
 var loaded = function(){
-  console.clear()
   // Handler when the DOM is fully loaded
   myApp.map = initmap(snaefell, zoom);
 };
@@ -52,19 +51,11 @@ const GBPFormatter = new Intl.NumberFormat('en-GB', {
   maximumFractionDigits: 0
 });
 
-const landreg = await d3.csv("data/iom-land-registry-with-location.csv",
-  function(d) {
-    return {
-      sharedAddress: d.sharedaddress,
-      uniqueAddress: d.uniqueaddress,
-      shortPlusCode: d.shortpluscode,
-      acquisitionDate: new Date(d.Acquisition_Date),
-      completionDate: new Date(d.Completion_Date),
-      consideration: Number(d.Consideration),
-      marketValue: Number(d.Market_Value),
-    }
-  }
-);
+const landreg = await (await fetch("data/iom-land-registry-with-location.json")).json();
+landreg.forEach((row) => {
+  row.Acquisition_Date = new Date(row.Acquisition_Date),
+  row.Completion_Date = new Date(row.Completion_Date)
+})
 
 function getLatLng(shortcode) {
   var coord = OpenLocationCode.decode(OpenLocationCode.recoverNearest(shortcode,snaefell.lat,snaefell.lng))
@@ -78,12 +69,12 @@ function maxOfDates(a,b) {
   return b;
 }
 
-if (new Date() < getMax(landreg,"acquisitionDate")){
+if (new Date() < getMax(landreg,"Acquisition_Date")){
   myApp.dateMax = monthOnly(new Date())
 } else {
-  myApp.dateMax = getMax(landreg,"acquisitionDate")
+  myApp.dateMax = getMax(landreg,"Acquisition_Date")
 }
-myApp.dateMin = monthOnly(getMin(landreg,"acquisitionDate"));
+myApp.dateMin = monthOnly(getMin(landreg,"Acquisition_Date"));
 myApp.absDateMin = new Date(1999,12,1)
 myApp.dateSliderMin = maxOfDates(myApp.absDateMin,myApp.dateMin);
 myApp.dateFromNum = 0;
@@ -130,31 +121,31 @@ function addMonths(date, months) {
 }
 
 function makeSale(sale) {
-  sale["marker"] = L.marker(getLatLng(sale.shortPlusCode));
-  var priceString = GBPFormatter.format(sale.marketValue);
-  if (sale.consideration != sale.marketValue){
+  sale["marker"] = L.marker(getLatLng(sale.shortpluscode));
+  var priceString = GBPFormatter.format(sale.Market_Value);
+  if (sale.consideration != sale.Market_Value){
     priceString += " (paid "+ GBPFormatter.format(sale.consideration)+")";
   }
-  sale.marker.marketValue = sale.marketValue;
-  sale.marker.acquisitionDate = sale.acquisitionDate;
+  sale.marker.Market_Value = sale.Market_Value;
+  sale.marker.Acquisition_Date = sale.Acquisition_Date;
   sale.marker.bindPopup(
-    sale.Address + "<br>" + (new Date(sale.acquisitionDate)).toLocaleDateString("en-GB")+": "+priceString
+    sale.Address + "<br>" + (new Date(sale.Acquisition_Date)).toLocaleDateString("en-GB")+": "+priceString
   );
   markerList.push(sale.marker);
 }
 
-function makeGroupedSale(shortPlusCode,sales) {
-  var marker = L.marker(getLatLng(shortPlusCode));
+function makeGroupedSale(shortpluscode,sales) {
+  var marker = L.marker(getLatLng(shortpluscode));
   
   function saleString(sale) {
-    var priceString = GBPFormatter.format(sale.marketValue);
-    if (sale.consideration != sale.marketValue){
+    var priceString = GBPFormatter.format(sale.Market_Value);
+    if (sale.consideration != sale.Market_Value){
       priceString += " (paid "+ GBPFormatter.format(sale.consideration)+")";
     }
-    s += `<tr><td>${sale.uniqueAddress}</td><td>${new Date(sale.acquisitionDate).toLocaleDateString("en-GB")}</td><td>${priceString}</td></tr>`
+    s += `<tr><td>${sale.uniqueaddress}</td><td>${new Date(sale.Acquisition_Date).toLocaleDateString("en-GB")}</td><td>${priceString}</td></tr>`
   }
   var s = `<table>`
-  s += `<tr>${sales[0].sharedAddress}</tr>`
+  s += `<tr>${sales[0].sharedaddress}</tr>`
   sales.forEach(saleString)
   s += "</table>"
   var popup = L.popup({maxHeight:300}).setContent(s);
@@ -264,11 +255,10 @@ function fillSlider(from, to, sliderColor, rangeColor) {
 
 function refreshSales() {
   markers.clearLayers();
-  console.log(lgfilt);
-  var groupedreg = Object.groupBy(lgfilt,(x)=>x.shortPlusCode)
+  var groupedreg = Object.groupBy(lgfilt,(x)=>x.shortpluscode)
   markerList = [];
-  for (const [shortPlusCode, sales] of Object.entries(groupedreg)) {
-    makeGroupedSale(shortPlusCode,sales);
+  for (const [shortpluscode, sales] of Object.entries(groupedreg)) {
+    makeGroupedSale(shortpluscode,sales);
   }
   markers.addLayers(markerList);
 }
@@ -424,11 +414,15 @@ function tableRow(row,columns) {
 	var s = "<tr>";
 	columns.forEach((column)=>{
     var data = row[column];
-    if (data.constructor === Number) {
-      data = GBPFormatter.format(data);
-    } else if (data.constructor === Date) {
-      data = data.toLocaleDateString("en-GB");
-    } 
+    if (data === null) {
+      data = ''
+    } else {
+      if (data.constructor === Number) {
+        data = GBPFormatter.format(data);
+      } else if (data.constructor === Date) {
+        data = data.toLocaleDateString("en-GB");
+      } 
+    }
 		s += `<td class="${column}">${data}</td>`;
 	})
 	s += "</tr>";
@@ -438,7 +432,6 @@ function tableRow(row,columns) {
 
 const table = document.querySelector('#landregTable');
 const search = document.querySelector('.tableSearch');
-console.log(search)
 const columns = Object.keys(landreg[1]);
 const tablehead = headerRow(columns);
 
@@ -450,8 +443,6 @@ function initialiseTable() {
   table.innerHTML = tablehead + "<tbody></tbody>";
   Array.from(document.querySelectorAll('th')).forEach((h)=> {
     h.addEventListener('click', function(e) {
-      console.log(e.target);
-      console.log(e.target.textContent.replace(" ","_"));
       sortTableBy(e.target.textContent.replace(" ","_"));
     })
   })
@@ -469,11 +460,11 @@ search.addEventListener('input', refreshData)
 
 function filterData() {
   lgfilt = landreg.filter((sale) =>
-    sale.marketValue >= myApp.priceFrom &&
-    sale.marketValue <= myApp.priceTo &&
-    sale.acquisitionDate >= getDateFrom() &&
-    sale.acquisitionDate < addMonths(getDateTo(),1) &&
-    (sale.sharedAddress + ", " + sale.uniqueAddress).toLowerCase().indexOf(search.value.toLowerCase()) >= 0
+    sale.Market_Value >= myApp.priceFrom &&
+    sale.Market_Value <= myApp.priceTo &&
+    sale.Acquisition_Date >= getDateFrom() &&
+    sale.Acquisition_Date < addMonths(getDateTo(),1) &&
+    (sale.sharedaddress + ", " + sale.uniqueaddress).toLowerCase().indexOf(search.value.toLowerCase()) >= 0
   )
 }
 
@@ -483,7 +474,6 @@ function printTable() {
 }
 
 function sortTableBy(header) {
-  console.log("try to sort")
   if (currentSort == header) {
     sortAsc = !sortAsc;
   }
@@ -496,7 +486,6 @@ function sortTableBy(header) {
 }
 
 function sortTables() {
-    console.log(`sorting table by ${currentSort}`)
     lgfilt.sort(objectSorter(currentSort,sortAsc))
     landreg.sort(objectSorter(currentSort,sortAsc))
 }
