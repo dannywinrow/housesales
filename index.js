@@ -142,7 +142,8 @@ function makeGroupedSale(shortpluscode,sales) {
     if (sale.consideration != sale.Market_Value){
       priceString += " (paid "+ GBPFormatter.format(sale.consideration)+")";
     }
-    s += `<tr><td>${sale.uniqueaddress}</td><td>${new Date(sale.Acquisition_Date).toLocaleDateString("en-GB")}</td><td>${priceString}</td></tr>`
+    s += `<tr>`
+    s += `<td>${sale.uniqueaddress}</td><td>${new Date(sale.Acquisition_Date).toLocaleDateString("en-GB")}</td><td>${priceString}</td></tr>`
   }
   var s = `<table>`
   s += `<tr>${sales[0].sharedaddress}</tr>`
