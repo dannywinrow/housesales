@@ -52,6 +52,7 @@ const GBPFormatter = new Intl.NumberFormat('en-GB', {
 });
 
 const landreg = await (await fetch("data/iom-land-registry-with-location.json")).json();
+console.log(landreg)
 landreg.forEach((row) => {
   row.Acquisition_Date = new Date(row.Acquisition_Date),
   row.Completion_Date = new Date(row.Completion_Date)
@@ -69,10 +70,11 @@ function maxOfDates(a,b) {
   return b;
 }
 
-if (new Date() < getMax(landreg,"Acquisition_Date")){
+// Changed to completion date because there are anomalies with year 2107 in Acquisition Date
+if (new Date() < getMax(landreg,"Completion_Date")){
   myApp.dateMax = monthOnly(new Date())
 } else {
-  myApp.dateMax = getMax(landreg,"Acquisition_Date")
+  myApp.dateMax = getMax(landreg,"Completion_Date")
 }
 myApp.dateMin = monthOnly(getMin(landreg,"Acquisition_Date"));
 myApp.absDateMin = new Date(1999,12,1)
@@ -123,8 +125,8 @@ function addMonths(date, months) {
 function makeSale(sale) {
   sale["marker"] = L.marker(getLatLng(sale.shortpluscode));
   var priceString = GBPFormatter.format(sale.Market_Value);
-  if (sale.consideration != sale.Market_Value){
-    priceString += " (paid "+ GBPFormatter.format(sale.consideration)+")";
+  if (sale.Consideration != sale.Market_Value){
+    priceString += " (paid "+ GBPFormatter.format(sale.Consideration)+")";
   }
   sale.marker.Market_Value = sale.Market_Value;
   sale.marker.Acquisition_Date = sale.Acquisition_Date;
@@ -139,11 +141,16 @@ function makeGroupedSale(shortpluscode,sales) {
   
   function saleString(sale) {
     var priceString = GBPFormatter.format(sale.Market_Value);
-    if (sale.consideration != sale.Market_Value){
-      priceString += " (paid "+ GBPFormatter.format(sale.consideration)+")";
+    if (sale.Consideration != sale.Market_Value){
+      priceString += " (paid "+ GBPFormatter.format(sale.Consideration)+")";
     }
     s += `<tr>`
-    s += `<td>${sale.uniqueaddress}</td><td>${new Date(sale.Acquisition_Date).toLocaleDateString("en-GB")}</td><td>${priceString}</td></tr>`
+    if (sale.uniqueaddress != null) {
+      s += `<td>${sale.uniqueaddress}</td>`
+    }
+    s += `<td>${new Date(sale.Acquisition_Date).toLocaleDateString("en-GB")}</td>`
+    s += `<td>${priceString}</td>`
+    s += `</tr>`
   }
   var s = `<table>`
   s += `<tr>${sales[0].sharedaddress}</tr>`
